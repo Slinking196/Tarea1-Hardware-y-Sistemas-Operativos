@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Autor: Matías Bugueño 21.120.023-5
+# ICI3344-1 Hardware y Sistemas Operativos
+# 30 de Abril 2023
+
 function mostrarInfoPc {
     modelName=$(cat /proc/cpuinfo | grep -m 1 "model name" | awk '{printf"%s %s %s %s %s %s", $4, $5, $6, $7, $8, $9}')
     kernelVersion=$(cat /proc/version | awk '{print $3}')
@@ -39,7 +43,7 @@ function infoMemoriaRam {
 }
 
 function conexionesTCP {
-    let i=2
+    let i=1
 
     echo "Source:Port             Destination:Port        Status"
     while true;
@@ -114,6 +118,10 @@ function help {
     echo "#                                             #"
     echo "# 4) -tcpStatus: Muestra las conexiones TCP   #"
     echo "#                ordenadas por status.        #"
+    echo "#                                             #"
+    echo "# 5) clear: Limpia la pantalla y vuelve a     #"
+    echo "#           imprimir la información del PC.   #"
+    echo "#                                             #"
     echo "###############################################"          
 
     echo
@@ -136,6 +144,9 @@ do
         conexionesTCP "2"
     elif [ $opcion = "-help" ]; then
         help
+    elif [ $opcion = "clear" ]; then
+        clear
+        mostrarInfoPc
     elif [ $opcion = "-exit" ]; then
         exit
     else
