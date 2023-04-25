@@ -21,7 +21,7 @@ function infoProcesos {
         pid=$(cat $proceso/status | grep "Pid" | awk '{printf"%s", $2}')
         ppid=$(cat $proceso/status | grep "PPid" | awk '{printf"%s", $2}')
         status=$(cat $proceso/status | grep "State" | awk '{printf"%s", $3}')
-        cmd=$(cat $proceso/cmdline | tr '\0' ' ')
+        cmd=$(cat $proceso/cmdline | tr '\0' ' ' | awk '{printf"%s", $1}')
 
         printf "%6s %12s %7s %12s   %s\n" "$uid" "$pid" "$ppid" "$status" "$cmd"
     done
@@ -39,41 +39,47 @@ function infoMemoriaRam {
 }
 
 function conexionesTCP {
-    let i=0
+    let i=2
 
     echo "Source:Port             Destination:Port        Status"
     while true;
     do
-        sourcePort=$(cat /proc/net/tcp | grep "$i: " | awk '{printf"%s", $2}')
-        destinationPort=$(cat /proc/net/tcp | grep "$i: " | awk '{printf"%s", $3}')
-        state=$(cat /proc/net/tcp | grep "$i: " | awk '{printf"%s", $4}')
+        if [ $1 = "1" ]; then
+            sourcePort=$(cat /proc/net/tcp | tail -n +$i | sed -n 2p | awk '{printf"%s", $2}')
+            destinationPort=$(cat /proc/net/tcp | tail -n +$i | sed -n 2p | awk '{printf"%s", $3}')
+            status=$(cat /proc/net/tcp | tail -n +$i | sed -n 2p | awk '{printf"%s", $4}')
+        elif [ $1 = "2" ]; then
+            sourcePort=$(cat /proc/net/tcp | sort -k4  | tail -n +$i | sed -n 2p | awk '{printf"%s", $2}')
+            destinationPort=$(cat /proc/net/tcp | sort -k4 | tail -n +$i | sed -n 2p | awk '{printf"%s", $3}')
+            status=$(cat /proc/net/tcp | sort -k4 | tail -n +$i | sed -n 2p | awk '{printf"%s", $4}')
+        fi
 
         if [ -z $sourcePort ]; then
             break
         fi
         
-        if [ $state = "01" ]; then
-            stateAux="ESTABLISHED"
-        elif [ $state = "02" ]; then 
-            stateAux="SYN_SENT"
-        elif [ $state = "03" ]; then
-            stateAux="SYN_RECV"
-        elif [ $state = "04" ]; then
-            stateAux="FIN_WAIT1"
-        elif [ $state = "05" ]; then
-            stateAux="FIN_WAIT2"
-        elif [ $state = "06" ]; then
-            stateAux="TIME_WAIT"
-        elif [ $state = "07" ]; then
-            stateAux="CLOSE"
-        elif [ $state = "08" ]; then
-            stateAux="CLOSE_WAIT"
-        elif [ $state = "09" ]; then
-            stateAux="LAST_ACK"
-        elif [ $state = "0A" ]; then
-            stateAux="LISTEN"
-        elif [ $state = "0B" ]; then
-            stateAux="CLOSING"
+        if [ $status = "01" ]; then
+            statusAux="ESTABLISHED"
+        elif [ $status = "02" ]; then 
+            statusAux="SYN_SENT"
+        elif [ $status = "03" ]; then
+            statusAux="SYN_RECV"
+        elif [ $status = "04" ]; then
+            statusAux="FIN_WAIT1"
+        elif [ $status = "05" ]; then
+            statusAux="FIN_WAIT2"
+        elif [ $status = "06" ]; then
+            statusAux="TIME_WAIT"
+        elif [ $status = "07" ]; then
+            statusAux="CLOSE"
+        elif [ $status = "08" ]; then
+            statusAux="CLOSE_WAIT"
+        elif [ $status = "09" ]; then
+            statusAux="LAST_ACK"
+        elif [ $status = "0A" ]; then
+            statusAux="LISTEN"
+        elif [ $status = "0B" ]; then
+            statusAux="CLOSING"
         fi
 
         ipSourse=$(echo $sourcePort | cut -d ":" -f 1)
@@ -85,8 +91,8 @@ function conexionesTCP {
         portSource_dec=$((0x${portSourse}))
         ipDestination_dec=$(printf "%d.%d.%d.%d\n" 0x${ipDestination:6:2} 0x${ipDestination:4:2} 0x${ipDestination:2:2} 0x${ipDestination:0:2})
         portDestination_dec=$((0x${portDestination}))
-
-        echo "$ipSource_dec $portSource_dec $ipDestination_dec $portDestination_dec $stateAux" | awk '{printf"%s:%s %20s:%s %17s\n", $1, $2, $3, $4, $5}'
+   
+        echo "$ipSource_dec $portSource_dec $ipDestination_dec $portDestination_dec $statusAux" | awk '{printf"%s:%s %20s:%s %17s\n", $1, $2, $3, $4, $5}'
         let i=$i+1
     done
 
@@ -94,6 +100,22 @@ function conexionesTCP {
 }
 
 function help { 
+    echo "###############################################"
+    echo "#               Lista de comandos             #"
+    echo "#                                             #"
+    echo "# 1) -ps: Muestra la información de todos los #"
+    echo "#         procesos que tiene el sistema.      #"
+    echo "#                                             #"
+    echo "# 2) -m: Muestra la cantidad de memoria ram   #"
+    echo "#        total y la cantidad de memoria       #"
+    echo "#        disponible.                          #"
+    echo "#                                             #"
+    echo "# 3) -tcp: Muestra las conexiones TCP.        #"
+    echo "#                                             #"
+    echo "# 4) -tcpStatus: Muestra las conexiones TCP   #"
+    echo "#                ordenadas por status.        #"
+    echo "###############################################"          
+
     echo
 }
 
@@ -102,16 +124,22 @@ mostrarInfoPc
 while true;
 do
     read opcion
+    echo
 
     if [ $opcion = "-ps" ]; then
         infoProcesos
     elif [ $opcion = "-m" ]; then
         infoMemoriaRam
     elif [ $opcion = "-tcp" ]; then
-        conexionesTCP
+        conexionesTCP "1"
+    elif [ $opcion = "-tcpStatus" ]; then
+        conexionesTCP "2"
     elif [ $opcion = "-help" ]; then
         help
     elif [ $opcion = "-exit" ]; then
         exit
+    else
+        echo "error: $opcion no existe, escriba -help para ver la lista de comandos"
+        echo
     fi
 done
